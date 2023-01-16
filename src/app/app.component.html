@@ -1,65 +1,84 @@
-<mat-card>
-  <mat-form-field appearance="fill">
-    <mat-label>OnlyNumber input</mat-label>
-    <input
-      matInput
-      type="text"
-      NumberOnly
-      [allowEmpty]="false"
-      [allowDecimals]="true"
-      [allowNegative]="true"
-      [decimalPlaces]="2"
-      [decimalSign]="'.'"
-      [min]="-100"
-      [max]="100"
-    />
-  </mat-form-field>
-</mat-card>
-<mat-card>
-  <mat-form-field appearance="fill">
-    <mat-label>Native number input</mat-label>
-    <input matInput type="number" min="-100" max="100" />
-  </mat-form-field>
-</mat-card>
-<!-- <div class="container">
-  <div class="ui card">
-    <h1>Team Generator</h1>
+<mat-card class="demo-wrapper">
+  <!-- <form [formGroup]="options"> -->
+  <div class="demo-wrapper_column left">
+    <div class="demo-wrapper_row">
+      <label>Allow negative:</label>
+      <mat-checkbox
+        [(ngModel)]="allowNegative"
+        (change)="validateMin()"
+      ></mat-checkbox>
+    </div>
+    <div class="demo-wrapper_row">
+      <label>Allow empty:</label>
+      <mat-checkbox [(ngModel)]="allowEmpty"></mat-checkbox>
+    </div>
+    <div class="demo-wrapper_row">
+      <label>Min:</label>
+      <mat-form-field appearance="outline">
+        <input
+          matInput
+          type="number"
+          [(ngModel)]="min"
+          [min]="!allowNegative ? 0 : -99999999999"
+        />
+      </mat-form-field>
+    </div>
+    <div class="demo-wrapper_row">
+      <label>Max:</label>
+      <mat-form-field appearance="outline">
+        <input
+          matInput
+          type="number"
+          [(ngModel)]="max"
+          [min]="!allowNegative ? 0 : -99999999998"
+        />
+      </mat-form-field>
+    </div>
+    <div class="demo-wrapper_row">
+      <label>Allow decimal:</label>
+      <mat-checkbox [(ngModel)]="allowDecimal"></mat-checkbox>
+    </div>
+    <div class="demo-wrapper_row">
+      <label [class]="{ disabled: !allowDecimal }">Decimal sign:</label>
+      <mat-radio-group [(ngModel)]="decimalSign" [disabled]="!allowDecimal">
+        <mat-radio-button value=",">Comma</mat-radio-button>
+        <mat-radio-button value=".">Point</mat-radio-button>
+      </mat-radio-group>
+    </div>
+    <div class="demo-wrapper_row">
+      <label [class]="{ disabled: !allowDecimal }">Decimal places:</label>
+      <mat-form-field appearance="outline">
+        <input
+          matInput
+          type="number"
+          min="1"
+          max="16"
+          [(ngModel)]="decimalPlaces"
+          [disabled]="!allowDecimal"
+        />
+      </mat-form-field>
+    </div>
+  </div>
 
-    <ul class="list">
-      <li *ngFor="let member of members">{{ member }}</li>
-    </ul>
-
-    <div class="add-members-container">
+  <div class="demo-wrapper_column right">
+    <mat-form-field appearance="outline">
+      <mat-label>OnlyNumber input</mat-label>
       <input
-        #peopleInput
+        matInput
         type="text"
-        (input)="onInput(peopleInput.value)"
-        [value]="newMemberText"
-        placeholder="Name"
+        NumberOnly
+        [allowEmpty]="allowEmpty"
+        [allowDecimals]="allowDecimal"
+        [allowNegative]="allowNegative"
+        [decimalPlaces]="decimalPlaces"
+        [decimalSign]="decimalSign"
+        [min]="min"
+        [max]="max"
+        (validateEmission)="catchValidation($event)"
+        [disabled]="errorMsg !== ''"
       />
-      <button (click)="onClick()">Add</button>
-    </div>
-
-    <div class="input-container">
-      <input
-        #teamSizeInput
-        type="number"
-        placeholder="# of teams"
-        [value]="numberOfTeams"
-        (input)="onTeamSizeInput(teamSizeInput.value)"
-      />
-      <button (click)="generateTeams()">Generate</button>
-    </div>
-    <p *ngIf="errorMessage" class="error-msg">{{ errorMessage }}</p>
+      <mat-hint>{{ errorMsg }}</mat-hint>
+    </mat-form-field>
   </div>
-
-  <div class="teams-container" *ngIf="teams.length">
-    <app-team
-      *ngFor="let team of teams; let i = index"
-      [team]="team"
-      [index]="i"
-    ></app-team>
-  </div>
-</div>
-
-<router-outlet></router-outlet> -->
+  <!-- </form> -->
+</mat-card>

@@ -78,9 +78,11 @@ export type Range<F extends number, T extends number> = Exclude<
 import {
   Directive,
   ElementRef,
+  EventEmitter,
   HostListener,
   Input,
   OnInit,
+  Output,
   Renderer2,
 } from '@angular/core';
 
@@ -105,6 +107,8 @@ export class NumberOnlyDirective implements OnInit {
   @Input() decimalPlaces: Range<1, 16> = 2;
   @Input() min: number = Number.MIN_SAFE_INTEGER;
   @Input() max: number = Number.MAX_SAFE_INTEGER;
+  // to send error message to parent component
+  @Output() validateEmission = new EventEmitter<string>();
 
   selectAndClipboardKeys: Set<string> = SELECT_AND_CLIPBOARD_KEYS;
   regexpTemplates: any;
@@ -117,28 +121,44 @@ export class NumberOnlyDirective implements OnInit {
   }
 
   /**
-   * Throw error in realtime
-   * Init default values
+   * Init/update input values
+   * I use onChanges to detect dynamic setting changes in realtime
+   * if the inputs are fixed values, replace ngOnchanges by ngOnInit
    */
-  ngOnInit(): void {
-    // realtime min max and element type validation
-    this.realtimeValidation();
+  ngOnChanges(changes: any): void {
+    // validate min max in realtime
+    if (changes.min || changes.max) this.minMaxValidation();
 
-    // init default displayed value: 0 or ''
+    // set the value to default (0 or '') if options get changed
     this.hostRef.value = this.allowEmpty ? '' : '0';
 
-    // dynamically generate regexp templates with customized decimal places
-    this.regexpTemplates = generateNumberRegexp(this.decimalPlaces);
+    // dynamically generate regexp templates based on provided options values
+    // triggered if user change "decimalPlaces", "allowDecimals" and "allowNegative"
+    if (
+      changes.decimalPlaces ||
+      changes.allowDecimals ||
+      changes.allowNegative
+    ) {
+      this.regexpTemplates = generateNumberRegexp(this.decimalPlaces);
 
-    // choose an appropiate regular expression
-    if (!this.allowDecimals && !this.allowNegative)
-      this.regexp = this.regexpTemplates.UNSIGNED_INTEGER;
-    if (!this.allowDecimals && this.allowNegative)
-      this.regexp = this.regexpTemplates.SIGNED_INTERGER;
-    if (this.allowDecimals && !this.allowNegative)
-      this.regexp = this.regexpTemplates.UNSINGED_DECIMAL;
-    if (this.allowDecimals && this.allowNegative)
-      this.regexp = this.regexpTemplates.SIGNED_DECIMAL;
+      // choose an appropiate regular expression
+      if (!this.allowDecimals && !this.allowNegative)
+        this.regexp = this.regexpTemplates.UNSIGNED_INTEGER;
+      if (!this.allowDecimals && this.allowNegative)
+        this.regexp = this.regexpTemplates.SIGNED_INTERGER;
+      if (this.allowDecimals && !this.allowNegative)
+        this.regexp = this.regexpTemplates.UNSINGED_DECIMAL;
+      if (this.allowDecimals && this.allowNegative)
+        this.regexp = this.regexpTemplates.SIGNED_DECIMAL;
+    }
+  }
+
+  /**
+   * Throw error in realtime if host element is not input[type='text']
+   */
+  ngOnInit(): void {
+    // validate
+    this.hostValidation();
   }
 
   /**
@@ -216,34 +236,43 @@ export class NumberOnlyDirective implements OnInit {
 
   /**
    * Triggered on mouseout, tab after user done typing or on paste operation
-   * - Transform value if decimal is allowed
-   * - validate whether input value is a valid number
+   * - validate if value is a valid number and transform it to match the predefined config
    * - Update input with the new transformed value
    */
   validateAndTransform(value: string): void {
+    let transValue;
+
     // if decimal is allowed:
     // - adding zero to the beginning if value begins with decimal sign
     // - adding zero to the end if value end with decimal sign
-    // - replace decimal comma to point (for later use Number() method)
+    // - value.replace(',', '.')  : so Number() method not throw NaN, will switch back later
+    //   Number()                 : get grid of leading zeroes (eg: 00005 to 5)
+    //   (we can use regexp to resolve this too, this is only for demonstration one of Number() use case)
+    //   toFixed()                : convert to designated num of decimal places
     if (this.allowDecimals) {
       if (value.charAt(0) == this.decimalSign) value = 0 + value;
       if (value.charAt(value.length - 1) == this.decimalSign) value = value + 0;
-      if (this.decimalSign != '.') value = value.replace(',', '.');
+      transValue = Number(value.replace(',', '.')).toFixed(this.decimalPlaces);
+    } else {
+      transValue = value;
     }
 
-    // convert to Number(value) and convert back to string to get rid of leading zeroes
-    // we can use regexp to resolve this too, this is only for demonstration one of Number() use case
-    // - handle adding decimal places
-    // if regexp validation fails -> replace it with '' or '0'
-    let transValue = this.convertNumToStr(Number(value));
+    // validate with regexp:
+    // - fail: replace value by '' or '0'
+    // - pass: proceed with min max check
     if (!new RegExp(this.regexp).test(transValue))
       transValue = this.allowEmpty ? '' : '0';
-
-    // set value in range [min, max] if out of bound
-    if (this.max && Number(transValue) > this.max)
-      transValue = this.convertNumToStr(this.max);
-    if (this.min && Number(transValue) < this.min)
-      transValue = this.convertNumToStr(this.min);
+    else {
+      const toNum = Number(transValue);
+      // set value to min/max if out of bound
+      if (toNum > this.max || toNum < this.min) {
+        transValue = toNum > this.max ? this.max : this.min;
+        // we need to convert the min/max to proper decimal form too if decimal is allowed
+        transValue = this.allowDecimals
+          ? transValue.toFixed(this.decimalPlaces)
+          : transValue.toString();
+      }
+    }
 
     // switch the decimal sign back if needed
     // update the current input value
@@ -258,24 +287,19 @@ export class NumberOnlyDirective implements OnInit {
    * I couldn't come up with a compile-time validation solution
    * So I handle it in realtime
    */
-  realtimeValidation(): void {
-    const child = this.renderer.createElement('div');
-    const parent = this.renderer.parentNode(this.hostRef);
-    // if the host is not Input tag
+  hostValidation(): void {
     if (!(this.hostRef instanceof HTMLInputElement)) {
-      const text = ERROR_MESSAGES_INPUT_NUMBER.INVALID_ELEMENT_TYPE;
-      const textEl = this.renderer.createText(text);
-      this.renderer.appendChild(child, textEl);
-      this.renderer.appendChild(parent, child);
-      throw Error(text);
+      const errMsg = ERROR_MESSAGES_INPUT_NUMBER.INVALID_ELEMENT_TYPE;
+      this.validateEmission.emit(errMsg);
+      throw Error(errMsg);
     }
-    // if min max is invalid
+  }
+  minMaxValidation(): void {
     if (this.min >= this.max) {
-      const text = ERROR_MESSAGES_INPUT_NUMBER.INVALID_MIN_MAX;
-      const textEl = this.renderer.createText(text);
-      this.renderer.appendChild(child, textEl);
-      this.renderer.appendChild(parent, child);
-      throw Error(text);
+      const errMsg = ERROR_MESSAGES_INPUT_NUMBER.INVALID_MIN_MAX;
+      this.validateEmission.emit(errMsg);
+    } else {
+      this.validateEmission.emit('');
     }
   }
 
@@ -294,15 +318,5 @@ export class NumberOnlyDirective implements OnInit {
     if (legacyBrowserSpecialKey.has(e.keyCode))
       return legacyBrowserSpecialKey.get(e.keyCode);
     else return String.fromCharCode(e.keyCode);
-  }
-
-  /**
-   * If decimal is allowed, convert to decimal string
-   * otherwise, convert to string
-   */
-  convertNumToStr(num: number): string {
-    return this.allowDecimals
-      ? num.toFixed(this.decimalPlaces)
-      : num.toString();
   }
 }

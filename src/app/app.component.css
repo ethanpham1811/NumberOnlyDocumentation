@@ -16,6 +16,18 @@ body, input[type="text"], button {
   color: #333;
   font-family: Cambria, Georgia, serif;
 }
+body {
+  background-color: #80b3da;
+}
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+}
 button {
   background-color: #eee;
   border: none;
@@ -44,4 +56,55 @@ button:disabled {
 }
 .mat-form-field-wrapper {
   margin-right: 20px;
+}
+.demo-wrapper.mat-card{
+  width: 600px;
+  display: flex;
+  margin: auto;
+}
+.demo-wrapper.mat-card .column {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  padding: 50px 20px;
+}
+.demo-wrapper_column.left{
+  width: 60%;
+  padding-right: 10px;
+}
+.demo-wrapper_column.right{
+  width: 40%;
+  padding: 20px;
+  border-left: 1px solid #cfcfcf;
+  align-items: center;
+  display: flex;
+}
+.demo-wrapper.mat-card .demo-wrapper_row{
+  display: flex;
+  margin: 5px 0;
+  height: 35px;
+  align-items: center;
+}
+.demo-wrapper.mat-card .demo-wrapper_row > label{
+  width: 130px;
+}
+.demo-wrapper.mat-card .demo-wrapper_row > label.disabled{
+  color: rgba(0,0,0,.38);
+}
+.mat-radio-button > label {
+  margin-right: 10px;
+}
+
+.demo-wrapper_column.left .mat-form-field-appearance-outline .mat-form-field-infix{
+  padding: 0 5px;
+  top: -4px;
+}
+.demo-wrapper_column.left .mat-form-field-appearance-outline .mat-form-field-infix input[type=number]{
+  text-align: center;
+}
+.demo-wrapper_column.left .mat-form-field-appearance-outline .mat-form-field-wrapper {
+  padding: 0;
+}
+.demo-wrapper_column.right .mat-form-field-appearance-outline .mat-form-field-hint-wrapper .mat-hint{
+  color: red;
 }
